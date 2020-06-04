@@ -1,0 +1,27 @@
+{
+    "name": "ajthenewguy/php7-machines",
+    "description": "Implementation of a finite state machine in PHP7",
+    "type": "library",
+    "require": {
+        "php": "^7.2.5",
+        "php-ds/php-ds": "dev-master"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^8.5",
+        "phpstan/phpstan": "^0.12.0@dev",
+        "phpbench/phpbench": "@dev"
+    },
+    "autoload": {
+        "psr-4": {
+            "Machines\\": "src/"
+        }
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Allen McCabe",
+            "email": "allenmccabe@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev"
+}
