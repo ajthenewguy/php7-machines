@@ -4,8 +4,6 @@ declare(strict_types=1);
 namespace Machines\Traits;
 
 use Machines\State;
-use Machines\StateMachine;
-use Machines\Transducer;
 use Machines\Exceptions\InvalidStateException;
 
 trait HasState {
@@ -14,6 +12,15 @@ trait HasState {
      * @var State
      */
     protected $state;
+
+    /**
+     * @param string $label
+     * @return boolean
+     */
+    public function is(string $label): bool
+    {
+        return $this->state->label === $label;
+    }
 
     /**
      * Get the current state.

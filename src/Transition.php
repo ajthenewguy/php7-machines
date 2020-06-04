@@ -86,15 +86,13 @@ class Transition {
 
     /**
      * @param mixed $input
-     * @return array<mixed>
+     * @return void
      */
-    public function input($input = null): array
+    public function input($input = null)
     {
         if (isset($this->acceptor)) {
             $this->acceptor->input($input);
-            return $this->acceptor->output();
         }
-        return [null, null];
     }
 
     /**

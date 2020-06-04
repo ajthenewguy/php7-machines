@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Machines\Acceptors;
 
-use Ds\{Stack, Vector};
+use Ds\Stack;
 use Machines\Exceptions\InvalidInputException;
 use Machines\Interfaces\iAcceptor;
 
@@ -35,14 +35,6 @@ class FibonacciAcceptor implements iAcceptor
     {
         $this->input->push($input);
         return $this->evaluate()->accepting();
-    }
-
-    /**
-     * Get the output tape
-     */
-    public function output()
-    {
-        return null;
     }
 
     /**

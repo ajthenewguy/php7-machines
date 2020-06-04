@@ -20,9 +20,4 @@ interface iAcceptor {
      * @return bool
      */
     public function input($input): bool;
-
-    /**
-     * @return mixed
-     */
-    public function output();
 }

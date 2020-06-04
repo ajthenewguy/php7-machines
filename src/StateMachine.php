@@ -3,8 +3,7 @@ declare(strict_types=1);
 
 namespace Machines;
 
-use Machines\Interfaces\iAcceptor;
-use Machines\Exceptions\DuplicateStateException;
+use Machines\Exceptions\InvalidInputException;
 use Machines\Exceptions\InvalidStateException;
 use Machines\Traits\HasState;
 
@@ -36,6 +35,9 @@ class StateMachine {
      */
     public function dispatch($action, $input = null): StateMachine
     {
+        if ($this->state->final) {
+            throw new InvalidInputException($input);
+        }
         foreach ($this->validTransitions() as $transition) {
             if ($transition->action === $action) {
                 $transition->validate($input);

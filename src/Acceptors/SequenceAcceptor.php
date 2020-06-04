@@ -46,15 +46,6 @@ class SequenceAcceptor implements iAcceptor {
     }
 
     /**
-     * Get the output tape
-     * @return mixed
-     */
-    public function output()
-    {
-        return null;
-    }
-
-    /**
      * @return bool
      */
     public function accepting(): bool

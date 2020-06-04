@@ -31,7 +31,7 @@ class LambdaAcceptorTest extends TestCase {
     public function testInput()
     {
         $acceptor = new LambdaAcceptor(function ($input) {
-            return $input;
+            return $input === 1;
         });
 
         $this->assertFalse($acceptor->accepting());

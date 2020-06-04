@@ -9,22 +9,28 @@ namespace Machines;
 class State {
 
     /**
+     * @var bool
+     */
+    private $final;
+
+    /**
      * The internal label
      * 
      * @var string
      */
     private $label;
 
-    public function __construct(string $label)
+    public function __construct(string $label, bool $final = false)
     {
-        $this->label = $label;
+        $this->label = (string) $label;
+        $this->final = $final;
     }
 
     /**
      * @param string $name
-     * @return null|string
+     * @return mixed
      */
-    public function __get($name): ?string
+    public function __get($name)
     {
         if (isset($this->{$name})) {
             return $this->{$name};

@@ -23,16 +23,10 @@ class LambdaAcceptor implements iAcceptor {
      */
     private $input;
 
-    /**
-     * @var mixed
-     */
-    private $output;
-
     public function __construct(callable $validator)
     {
         $this->inputValidator = $validator;
         $this->accepting = false;
-        $this->output = [];
     }
 
     /**
@@ -49,19 +43,12 @@ class LambdaAcceptor implements iAcceptor {
     public function evaluate(): LambdaAcceptor
     {
         $validator = $this->inputValidator;
-        $this->output = [];
 
         if (isset($this->input)) {
             $output = $validator($this->input);
 
-            switch (true) {
-                case $output === null:
-                break;
-                case $output === false:
-                    throw new InvalidInputException($this->input);
-                default:
-                    $this->output = $output;
-                break;
+            if (true !== $output) {
+                throw new InvalidInputException($this->input);
             }
             
             $this->accepting = true;
@@ -77,15 +64,5 @@ class LambdaAcceptor implements iAcceptor {
     {
         $this->input = $input;
         return $this->accepting();
-    }
-
-    /**
-     * Get the output tape
-     * 
-     * @return mixed
-     */
-    public function output()
-    {
-        return $this->output;
     }
 }

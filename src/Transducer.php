@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace Machines;
 
-use Machines\Interfaces\iAcceptor;
 use Machines\Exceptions\InvalidStateException;
 use Machines\Traits\HasState;
 
@@ -29,29 +28,26 @@ class Transducer {
     private $output;
 
     /**
-     * @var iAcceptor
+     * @var callable
      */
     private $consumer;
 
     /**
-     * @param iAcceptor $consumer
+     * @param callable $consumer
      * @param array<State> $states
-     * @param State $initialState
      */
-    public function __construct(iAcceptor $consumer, array $states, State $initialState)
+    public function __construct(callable $consumer, array $states)
     {
         $this->consumer = $consumer;
-        $this->states = $states;
-        $this->validateState($initialState);
-        $this->state = $initialState;
-        $this->output = [];
+        $this->setStates($states);
+        $this->state = $states[0];
     }
 
     /**
      * @params string $label
      * @return Transducer
      */
-    public function changeState(string $label): Transducer
+    public function to(string $label): Transducer
     {
         if ($state = $this->getState($label)) {
             return $this->setState($state);
@@ -60,17 +56,38 @@ class Transducer {
     }
 
     /**
-     * @param mixed $input
+     * @param string $input
      * @return array<mixed>
      */
-    public function consume($input): array
+    public function consume(string $input): array
     {
+        $this->output = [];
+        $finalState = $this->getFinalState();
+
         foreach (str_split($input) as $char) {
             $this->input($char);
         }
         $this->input(); // null terminate string
 
-        return $this->output;
+        if (!$finalState || $finalState->label === $this->state->label) {
+            return $this->output;
+        }
+        
+    }
+
+    /**
+     * Find and return the final state
+     * 
+     * @return State|null
+     */
+    public function getFinalState(): ?State
+    {
+        foreach ($this->states as $state) {
+            if ($state->final) {
+                return $state;
+            }
+        }
+        return null;
     }
 
     /**
@@ -88,18 +105,13 @@ class Transducer {
     }
 
     /**
-     * Dispatch an action to affect a transition.
+     * Check if the machine has a final state
      * 
-     * @param mixed $input
-     * @return void
+     * @return boolean
      */
-    public function input($input = null): void
+    public function hasFinalState(): bool
     {
-        $this->consumer->input([$this, $input]);
-
-        if ($output = $this->consumer->output()) {
-            $this->output[] = $output;
-        }
+        return !!$this->getFinalState();
     }
 
     /**
@@ -127,6 +139,51 @@ class Transducer {
         return $this->output;
     }
 
+    /**
+     * Dispatch an action to affect a transition.
+     * 
+     * @param mixed $input
+     * @return void
+     */
+    private function input($input = null): void
+    {
+        $consumer = $this->consumer;
+        $output = $consumer($input, $this);
+
+        switch (true) {
+            case !is_null($output):
+            case is_string($output) && strlen($output):
+            case is_array($output) && !empty($output):
+                $this->output[] = $output;
+            break;
+        }
+    }
+
+    /**
+     * @param array<State>
+     * @return Transducer
+     */
+    private function setStates(array $states): self
+    {
+        $has_final = false;
+        foreach ($states as $state) {
+            if ($state->final) {
+                if ($has_final) {
+                    throw new \InvalidArgumentException('Transducers may only have one final State');
+                } else {
+                    $has_final = true;
+                }
+            }
+        }
+        $this->states = $states;
+
+        return $this;
+    }
+
+    /**
+     * @param State $state
+     * @return void
+     */
     private function validateState(State $state): void
     {
         if (!$this->isValidState($state)) {
