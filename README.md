@@ -5,19 +5,22 @@ Implementation of a finite state machine in PHP7.
 
 A turnstile abstraction:
 
+    use Machines\State;
     use Machines\StateMachine;
+    use Machines\Transition;
 
     $Locked = new State('Locked');
     $Unlocked = new State('Unlocked');
-    $coinAcceptor = new LambdaAcceptor(function ($input) {
-        return $input === 'coin';
-    });
 
-    $toLocked = new Transition('PUSH', $Unlocked, $Locked);
-    $toUnlocked = new Transition('UNLOCK', $Locked, $Unlocked, $coinAcceptor);
+    $Locked->setTransitions([
+        new Transition(new MatchAcceptor('coin'), $Unlocked)
+    ]);
+    $Unlocked->setTransitions([
+        new Transition(new MatchAcceptor('push'), $Locked)
+    ]);
 
-    $machine = new StateMachine([$toLocked, $toUnlocked], $Locked);
+    $machine = new StateMachine([$Locked, $Unlocked]);
 
-    $machine->dispatch('UNLOCK', 'coin');
+    $machine->input('coin');
 
-    $machine->dispatch('PUSH');
+    $machine->input('push');

@@ -16,11 +16,6 @@ class Transducer extends StateMachine {
     private $accumulator;
 
     /**
-     * @var State
-     */
-    protected $state;
-
-    /**
      * output tape
      * 
      * @var array<mixed>
