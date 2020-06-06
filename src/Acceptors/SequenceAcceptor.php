@@ -6,24 +6,14 @@ namespace Machines\Acceptors;
 
 use Ds\{Stack, Vector};
 use Machines\Exceptions\InvalidInputException;
-use Machines\Interfaces\iAcceptor;
+use Machines\StateMachine;
 
-class SequenceAcceptor implements iAcceptor {
+class SequenceAcceptor extends BaseAcceptor {
 
-    /**
-     * @var boolean
-     */
-    private $accepting;
-
-    /**
+     /**
      * @var Vector<mixed>
      */
     private $sequence;
-
-    /**
-     * @var mixed
-     */
-    private $input;
 
     /**
      * @param array<mixed> $sequence
@@ -33,24 +23,6 @@ class SequenceAcceptor implements iAcceptor {
         $this->sequence = new Vector($sequence);
         $this->input = new Stack;
         $this->accepting = false;
-    }
-
-    /**
-     * @param mixed $input
-     * @return bool
-     */
-    public function input($input): bool
-    {
-        $this->input->push($input);
-        return $this->evaluate()->accepting();
-    }
-
-    /**
-     * @return bool
-     */
-    public function accepting(): bool
-    {
-        return $this->accepting;
     }
 
     /**
@@ -67,5 +39,19 @@ class SequenceAcceptor implements iAcceptor {
             $this->accepting = $inputCount === $this->sequence->count();
         }
         return $this;
+    }
+
+    /**
+     * @param mixed $input
+     * @param StateMachine $machine
+     * @return bool
+     */
+    public function input($input, StateMachine $machine = null): bool
+    {
+        $this->input->push($input);
+        if ($machine) {
+            $this->machine = $machine;
+        }
+        return $this->evaluate()->accepting();
     }
 }

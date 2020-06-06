@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use Machines\Acceptors\LambdaAcceptor;
+use Machines\Acceptors\MatchAcceptor;
 use Machines\State;
 use Machines\StateMachine;
 use Machines\Transition;
@@ -14,23 +14,24 @@ class StateMachineTest extends TestCase {
     {
         $Locked = new State('Locked');
         $Unlocked = new State('Unlocked');
-        $coinAcceptor = new LambdaAcceptor(function ($input) {
-            return $input === 'coin';
-        });
 
-        $toLocked = new Transition('PUSH', $Unlocked, $Locked);
-        $toUnlocked = new Transition('UNLOCK', $Locked, $Unlocked, $coinAcceptor);
+        $Locked->setTransitions([
+            new Transition(new MatchAcceptor('coin'), $Unlocked)
+        ]);
+        $Unlocked->setTransitions([
+            new Transition(new MatchAcceptor('push'), $Locked)
+        ]);
 
-        $machine = new StateMachine([$toLocked, $toUnlocked], $Locked);
-
-        $this->assertEquals('Locked', $machine->state()->label);
-
-        $machine->dispatch('UNLOCK', 'coin');
-
-        $this->assertEquals('Unlocked', $machine->state()->label);
-
-        $machine->dispatch('PUSH');
+        $machine = new StateMachine([$Locked, $Unlocked]);
 
         $this->assertEquals('Locked', $machine->state()->label);
+
+        $machine->input('coin');
+
+        $this->assertTrue($machine->is('Unlocked'));
+
+        $machine->input('push');
+
+        $this->assertTrue($machine->is('Locked'));
     }
 }

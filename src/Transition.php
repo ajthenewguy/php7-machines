@@ -7,14 +7,9 @@ use Machines\Interfaces\iAcceptor;
 use Machines\Exceptions\InvalidInputException;
 
 /**
- * @property-read string $action
+ * @property-read string $output
  */
 class Transition {
-
-    /**
-     * @var string
-     */
-    private $action;
 
     /**
      * @var iAcceptor
@@ -27,38 +22,50 @@ class Transition {
     private $nextState;
 
     /**
-     * @var State
+     * @var callable
      */
-    private $previousState;
+    private $onOutput;
 
     /**
-     * @param string $action
-     * @param State $previousState
+     * @var string
+     */
+    private $output;
+
+    /**
+     * @var boolean
+     */
+    private $shouldTransition;
+
+
+    /**
+     * @param iAcceptor $acceptor
      * @param State $nextState
-     * @param null|iAcceptor $acceptor
+     * @param mixed $output
      */
-    public function __construct(string $action, State $previousState, State $nextState, iAcceptor $acceptor = null)
+    public function __construct(iAcceptor $acceptor, State $nextState, $output = null)
     {
-        $this->action = $action;
-        $this->setPreviousState($previousState);
-        $this->setAcceptor($acceptor);
-        $this->setNextState($nextState);
+        $this->acceptor = $acceptor;
+        $this->nextState = $nextState;
+        $this->output = $output;
     }
 
     /**
-     * @return State
+     * @param mixed $input
+     * @return bool
      */
-    public function previousState(): State
+    public function accepts($input, StateMachine $machine): bool
     {
-        return $this->previousState;
-    }
+        $this->shouldTransition = false;
 
-    /**
-     * @return State
-     */
-    public function nextState(): State
-    {
-        return $this->nextState;
+        try {
+            $this->acceptor->input($input, $machine);
+            $this->shouldTransition = true;
+            $this->emit($this->output($input, $machine));
+        } catch (InvalidInputException $e) {
+            // var_dump($e->getMessage()."\n".$e->getTraceAsString());
+        }
+
+        return $this->shouldTransition;
     }
 
     /**
@@ -70,74 +77,64 @@ class Transition {
     }
 
     /**
-     * @param mixed $input
-     * @return bool
-     */
-    public function accepts($input): bool
-    {
-        try {
-            $this->validate($input);
-        } catch (InvalidInputException $e) {
-            return false;
-        }
-
-        return $this->acceptor->accepting();
-    }
-
-    /**
-     * @param mixed $input
+     * @param mixed $output
      * @return void
      */
-    public function input($input = null)
+    private function emit($output = null)
     {
-        if (isset($this->acceptor)) {
-            $this->acceptor->input($input);
+        if (isset($this->onOutput) && !is_null($output)) {
+            call_user_func($this->onOutput, $output);
         }
     }
 
     /**
-     * @param mixed $input
+     * @return State
+     */
+    public function nextState(): State
+    {
+        return $this->nextState;
+    }
+
+    /**
+     * @param callable $function
      * @return void
      */
-    public function validate($input = null): void
+    public function onOutput(callable $function)
     {
-        if (isset($this->acceptor)) {
-            $this->acceptor->input($input);
+        if (!is_callable($function)) {
+            throw new \InvalidArgumentException('out callback must be a callable');
+        }
+        $this->onOutput = $function;
+    }
+
+    /**
+     * @param mixed $input
+     * @param StateMachine $machine
+     * @return mixed
+     */
+    public function output($input = null, StateMachine $machine = null)
+    {
+        if (is_callable($this->output)) {
+            $out = $this->output;
+            return $out($input, $machine);
+        } else {
+            return $this->output;
         }
     }
 
     /**
-     * @param null|iAcceptor $acceptor
-     * @return void
+     * @return boolean
      */
-    public function setAcceptor(iAcceptor $acceptor = null): void
+    public function shouldTransition(): bool
     {
-        if ($acceptor) {
-            $this->acceptor = $acceptor;
-        }
-    }
-
-    private function setNextState(State $state): void
-    {
-        if (isset($this->previousState) && $state->label === $this->previousState->label) {
-            throw new \LogicException(sprintf('cannot transition to and from the same state'));
-        }
-        $this->nextState = $state;
-    }
-
-    private function setPreviousState(State $state): void
-    {
-        if (isset($this->nextState) && $state->label === $this->nextState->label) {
-            throw new \LogicException(sprintf('cannot transition to and from the same state'));
-        }
-        $this->previousState = $state;
+        return $this->shouldTransition;
     }
 
     /**
      * @param string $name
-     * @return null|string
+     * @return mixed
      */
-    public function __get($name): ?string
+    public function __get($name)
     {
         if (isset($this->{$name})) {
             return $this->{$name};

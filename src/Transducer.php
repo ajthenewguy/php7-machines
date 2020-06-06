@@ -3,22 +3,22 @@ declare(strict_types=1);
 
 namespace Machines;
 
-use Machines\Exceptions\InvalidStateException;
+use Machines\Exceptions\InvalidInputException;
 use Machines\Traits\HasState;
 
-class Transducer {
+class Transducer extends StateMachine {
 
     use HasState;
+
+    /**
+     * @var array<string>
+     */
+    private $accumulator;
 
     /**
      * @var State
      */
     protected $state;
- 
-    /**
-     * @var array<State>
-     */
-    protected $states;
 
     /**
      * output tape
@@ -33,46 +33,77 @@ class Transducer {
     private $consumer;
 
     /**
-     * @param callable $consumer
      * @param array<State> $states
      */
-    public function __construct(callable $consumer, array $states)
+    public function __construct(array $states)
     {
-        $this->consumer = $consumer;
-        $this->setStates($states);
-        $this->state = $states[0];
+        parent::__construct($states);
+        $this->registerOutputHandlers();
     }
 
     /**
-     * @params string $label
-     * @return Transducer
+     * @param mixed $input
+     * @return self
      */
-    public function to(string $label): Transducer
+    public function accumulate($input = null): self
     {
-        if ($state = $this->getState($label)) {
-            return $this->setState($state);
+        if (!is_null($input)) {
+            $this->accumulator[] = $input;
         }
         return $this;
     }
 
     /**
-     * @param string $input
-     * @return array<mixed>
+     * @return string
      */
-    public function consume(string $input): array
+    public function collect(): ?string
+    {
+        $output = null;
+        if (!empty($this->accumulator)) {
+            $output = implode($this->accumulator);
+            $this->accumulator = [];
+        }
+        return $output;
+    }
+
+    /**
+     * @param mixed $input
+     * @return null|array<mixed>
+     */
+    public function consume($input): ?array
     {
         $this->output = [];
         $finalState = $this->getFinalState();
 
-        foreach (str_split($input) as $char) {
+        $input = $this->stringify($input);
+        if (is_string($input)) {
+            $input = str_split($input);
+        }
+
+        foreach ($input as $char) {
             $this->input($char);
         }
-        $this->input(); // null terminate string
 
         if (!$finalState || $finalState->label === $this->state->label) {
+            if (!empty($this->accumulator)) {
+                $this->output[] = $this->collect();
+            }
+
             return $this->output;
         }
-        
+        return null;
+    }
+
+    /**
+     * @params string $label
+     * @return StateMachine
+     */
+    public function to(string $label): StateMachine
+    {
+        if ($state = $this->getState($label)) {
+            return $this->setState($state);
+        }
+        return $this;
     }
 
     /**
@@ -131,6 +162,18 @@ class Transducer {
     }
 
     /**
+     * @param Transition $output
+     * @return void
+     */
+    public function onOutput($output): void
+    {
+        $this->output[] = $output;
+        $this->output = array_filter($this->output, function ($out) {
+            return $out !== null;
+        });
+    }
+
+    /**
      * Get the output tape
      * @return array<mixed>
      */
@@ -140,54 +183,73 @@ class Transducer {
     }
 
     /**
-     * Dispatch an action to affect a transition.
-     * 
      * @param mixed $input
-     * @return void
+     * @return mixed
      */
-    private function input($input = null): void
+    public function input($input = null)
     {
-        $consumer = $this->consumer;
-        $output = $consumer($input, $this);
-
-        switch (true) {
-            case !is_null($output):
-            case is_string($output) && strlen($output):
-            case is_array($output) && !empty($output):
-                $this->output[] = $output;
-            break;
+        if ($this->state->final) {
+            throw new InvalidInputException($input);
         }
-    }
 
-    /**
-     * @param array<State>
-     * @return Transducer
-     */
-    private function setStates(array $states): self
-    {
-        $has_final = false;
-        foreach ($states as $state) {
-            if ($state->final) {
-                if ($has_final) {
-                    throw new \InvalidArgumentException('Transducers may only have one final State');
-                } else {
-                    $has_final = true;
+        $validTransitions = $this->validTransitions();
+
+        if (is_array($validTransitions)) {
+            foreach ($validTransitions as $transition) {
+                if ($transition->accepts($input, $this) === true) {
+                    
+                    $this->transition($transition);
+    
+                    return end($this->output);
                 }
             }
         }
-        $this->states = $states;
 
-        return $this;
+        return null;
     }
 
     /**
-     * @param State $state
      * @return void
      */
-    private function validateState(State $state): void
+    private function registerOutputHandlers()
     {
-        if (!$this->isValidState($state)) {
-            throw new InvalidStateException($state);
+        foreach ($this->states as $state) {
+            foreach ($state->transitions as $transition) {
+                $transition->onOutput([$this, 'onOutput']);
+            }
         }
+    }
+
+    /**
+     * @param mixed $input
+     * @return string|array<string>
+     */
+    private function stringify($input)
+    {
+        switch (gettype($input)) {
+            case "string":
+            break;
+            case "boolean":
+                $input = intval($input);
+            case "integer":
+            case "double":
+                $input = (string) $input;
+            break;
+            case "array":
+                foreach ($input as $key => $value) {
+                    $input[$key] = $this->stringify($value);
+                }
+            break;
+            case "object":
+                $input = $this->stringify((array) $input);
+            break;
+            case "NULL":
+                $input = '';
+            break;
+            default:
+                throw new \InvalidArgumentException(sprintf('cannot stringify input of type "%s"', gettype($input)));
+        }
+
+        return $input;
     }
 }

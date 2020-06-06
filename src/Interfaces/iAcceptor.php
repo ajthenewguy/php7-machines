@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace Machines\Interfaces;
 
+use Machines\StateMachine;
+
 interface iAcceptor {
 
     /**
@@ -17,7 +19,8 @@ interface iAcceptor {
 
     /**
      * @param mixed $input
+     * @param StateMachine $machine
      * @return bool
      */
-    public function input($input): bool;
+    public function input($input, StateMachine $machine = null): bool;
 }

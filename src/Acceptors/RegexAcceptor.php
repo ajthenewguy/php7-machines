@@ -4,20 +4,26 @@ declare(strict_types=1);
 namespace Machines\Acceptors;
 
 use Machines\Exceptions\InvalidInputException;
+use Machines\Regex;
 
-class LambdaAcceptor extends BaseAcceptor {
-
-    /**
-     * @var callable
-     */
-    private $inputValidator;
+class RegexAcceptor extends BaseAcceptor {
 
     /**
-     * @param callable $validator
+     * @var mixed
      */
-    public function __construct(callable $validator)
+    private $match;
+
+    /**
+     * @var Regex
+     */
+    private $regex;
+
+    /**
+     * @param string $regex
+     */
+    public function __construct(string $regex)
     {
-        $this->inputValidator = $validator;
+        $this->regex = new Regex($regex);
         $this->accepting = false;
     }
 
@@ -26,15 +32,10 @@ class LambdaAcceptor extends BaseAcceptor {
      */
     public function evaluate(): self
     {
-        $validator = $this->inputValidator;
-
         if (isset($this->input)) {
-            $output = $validator($this->input);
-
-            if (true !== $output) {
+            if (!$this->regex->test((string) $this->input)) {
                 throw new InvalidInputException($this->input);
             }
-            
             $this->accepting = true;
         }
         return $this;

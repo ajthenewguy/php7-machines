@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Machines\Traits;
 
 use Machines\State;
+use Machines\StateMachine;
 use Machines\Exceptions\InvalidStateException;
 
 trait HasState {
@@ -14,12 +15,33 @@ trait HasState {
     protected $state;
 
     /**
+     * @var array<State>
+     */
+    protected $states;
+
+    /**
      * @param string $label
      * @return boolean
      */
     public function is(string $label): bool
     {
         return $this->state->label === $label;
+    }
+
+    /**
+     * @param State $state
+     * @return boolean
+     */
+    public function isValidState(State $state): bool
+    {
+        if (!isset($this->state)) {
+            return true;
+        }
+        $labels = [];
+        foreach ($this->states as $state) {
+            $labels[] = $state->label;
+        }
+        return in_array($state->label, $labels);
     }
 
     /**
@@ -45,7 +67,7 @@ trait HasState {
      * @param string $string
      * @return string
      */
-    private static function camelCase(string $string): string
+    protected static function camelCase(string $string): string
     {
         $str = strtolower($string);
         if ($_str = preg_replace('/^a-z0-9]+/', ' ', $str)) {
@@ -58,7 +80,7 @@ trait HasState {
      * Call post-transition handlers
      * @return void
      */
-    private function callPostTransitionHandlers(State $previousState): void
+    protected function callPostTransitionHandlers(State $previousState): void
     {
         $fromHandler = 'from' . ucfirst(self::camelCase($previousState->label));
         $toHandler = 'on' . ucfirst(self::camelCase($this->state->label));
@@ -71,7 +93,7 @@ trait HasState {
      * Call pre-transition handlers
      * @return void
      */
-    private function callPreTransitionHandlers(State $nextState): void
+    protected function callPreTransitionHandlers(State $nextState): void
     {
         $beforeHandler = 'before' . ucfirst(self::camelCase($nextState->label));
 
@@ -82,9 +104,9 @@ trait HasState {
      * Handle transition logic.
      * 
      * @param State $state
-     * @return self
+     * @return StateMachine
      */
-    private function setState(State $state): self
+    protected function setState(State $state): StateMachine
     {
         if (!$this->isValidState($state)) {
             throw new InvalidStateException($state);
@@ -109,11 +131,42 @@ trait HasState {
                 $this->onTransition($previousState);
             } catch (\Throwable $e) {
                 $this->state = $previousState;
-                return $this;
             }
         }
 
         return $this;
+    }
+
+    /**
+     * @param array<State> $states
+     * @return StateMachine
+     */
+    protected function setStates(array $states): StateMachine
+    {
+        $has_final = false;
+        foreach ($states as $state) {
+            if ($state->final) {
+                if ($has_final) {
+                    throw new \InvalidArgumentException('Transducers may only have one final State');
+                } else {
+                    $has_final = true;
+                }
+            }
+        }
+        $this->states = $states;
+
+        return $this;
+    }
+
+    /**
+     * @param State $state
+     * @return void
+     */
+    protected function validateState(State $state): void
+    {
+        if (!$this->isValidState($state)) {
+            throw new InvalidStateException($state);
+        }
     }
 
     /**
@@ -127,7 +180,7 @@ trait HasState {
      * @param State $passedState
      * @return void
      */
-    private function invokeCustomHandler($method_name, State $passedState): void
+    protected function invokeCustomHandler($method_name, State $passedState): void
     {
         if (method_exists($this, $method_name)) {
             $method = [$this, $method_name];
