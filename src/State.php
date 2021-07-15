@@ -11,6 +11,8 @@ namespace Machines;
 class State {
 
     /**
+     * Flag to indicate a final state.
+     * 
      * @var bool
      */
     private $final;
@@ -29,14 +31,22 @@ class State {
 
     /**
      * @param string $label
-     * @param array<Transition> $transitions
      * @param boolean $final
      */
-    public function __construct(string $label, array $transitions = [], bool $final = false)
+    public function __construct(string $label, bool $final = false)
     {
-        $this->label = (string) $label;
-        $this->setTransitions($transitions);
+        $this->label = $label;
         $this->final = $final;
+    }
+
+    /**
+     * @param string $label
+     * @param boolean $final
+     * @return self
+     */
+    public static function create(string $label, bool $final = false): self
+    {
+        return new self($label, $final);
     }
 
     /**
@@ -45,9 +55,12 @@ class State {
      */
     public function setTransitions(array $transitions = []): self
     {
+        $this->transitions = [];
+
         foreach ($transitions as $transition) {
             $this->addTransition($transition);
         }
+
         return $this;
     }
 

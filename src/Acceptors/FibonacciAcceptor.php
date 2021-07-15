@@ -1,5 +1,4 @@
 <?php
-
 declare(strict_types=1);
 
 namespace Machines\Acceptors;
@@ -18,6 +17,9 @@ class FibonacciAcceptor extends BaseAcceptor {
 
     /**
      * Evaluate the accepting status.
+     * 
+     * @return self
+     * @throws InvalidInputException
      */
     public function evaluate(): FibonacciAcceptor
     {
@@ -36,6 +38,7 @@ class FibonacciAcceptor extends BaseAcceptor {
      * @param mixed $input
      * @param StateMachine $machine
      * @return bool
+     * @throws InvalidInputException
      */
     public function input($input, StateMachine $machine = null): bool
     {
