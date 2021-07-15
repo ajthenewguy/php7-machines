@@ -19,6 +19,19 @@ trait HasState {
      */
     protected $states;
 
+    public function canGo(string $label): bool
+    {
+        $validTransitions = $this->validTransitions();
+        if (is_array($validTransitions)) {
+            foreach ($validTransitions as $transition) {
+                if ($transition->nextState()->label === $label) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /**
      * @param string $label
      * @return boolean
@@ -55,15 +68,6 @@ trait HasState {
     }
 
     /**
-     * @param State $previousState
-     * @return void
-     */
-    protected function onTransition(State $previousState): void
-    {
-        // Override to react to transitions
-    }
-
-    /**
      * @param string $string
      * @return string
      */
@@ -74,6 +78,15 @@ trait HasState {
             $str = lcfirst(str_replace(' ', '', ucwords($_str)));
         }
         return $str;
+    }
+
+    /**
+     * @param State $previousState
+     * @return void
+     */
+    protected function onTransition(State $previousState): void
+    {
+        // Override to react to transitions
     }
 
     /**
@@ -98,6 +111,37 @@ trait HasState {
         $beforeHandler = 'before' . ucfirst(self::camelCase($nextState->label));
 
         $this->invokeCustomHandler($beforeHandler, $nextState);
+    }
+
+    /**
+     * @param string $label
+     * @return State|null
+     */
+    protected function getState(string $label): ?State
+    {
+        foreach ($this->states as $state) {
+            if ($state->label === $label) {
+                return $state;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Find state and transition
+     * 
+     * @param string $transition
+     * @return boolean
+     * @throws InvalidStateException
+     */
+    protected function go(string $label): bool
+    {
+        if (!$this->canGo($label)) {
+            throw new InvalidStateException($this->getState($label));
+        }
+        $this->setState($this->getState($label));
+
+        return $this->state->label === $label;
     }
 
     /**
