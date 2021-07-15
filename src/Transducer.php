@@ -214,37 +214,4 @@ class Transducer extends StateMachine {
             }
         }
     }
-
-    /**
-     * @param mixed $input
-     * @return string|array<string>
-     */
-    private function stringify($input)
-    {
-        switch (gettype($input)) {
-            case "string":
-            break;
-            case "boolean":
-                $input = intval($input);
-            case "integer":
-            case "double":
-                $input = (string) $input;
-            break;
-            case "array":
-                foreach ($input as $key => $value) {
-                    $input[$key] = $this->stringify($value);
-                }
-            break;
-            case "object":
-                $input = $this->stringify((array) $input);
-            break;
-            case "NULL":
-                $input = '';
-            break;
-            default:
-                throw new \InvalidArgumentException(sprintf('cannot stringify input of type "%s"', gettype($input)));
-        }
-
-        return $input;
-    }
 }

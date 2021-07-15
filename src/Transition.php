@@ -50,6 +50,8 @@ class Transition {
     }
 
     /**
+     * Check if the provided input is acceptable, and if so, emit the configured output.
+     * 
      * @param mixed $input
      * @return bool
      */
@@ -59,13 +61,14 @@ class Transition {
 
         try {
             $this->acceptor->input($input, $machine);
+
             $this->shouldTransition = true;
             $this->emit($this->output($input, $machine));
         } catch (InvalidInputException $e) {
             // var_dump($e->getMessage()."\n".$e->getTraceAsString());
         }
 
-        return $this->shouldTransition;
+        return $this->shouldTransition();
     }
 
     /**
@@ -97,14 +100,13 @@ class Transition {
 
     /**
      * @param callable $function
-     * @return void
+     * @return self
      */
     public function onOutput(callable $function)
     {
-        if (!is_callable($function)) {
-            throw new \InvalidArgumentException('out callback must be a callable');
-        }
         $this->onOutput = $function;
+
+        return $this;
     }
 
     /**
@@ -123,7 +125,7 @@ class Transition {
     }
 
     /**
-     * @return boolean
+     * @return bool
      */
     public function shouldTransition(): bool
     {
